@@ -206,7 +206,10 @@ app.post('/api/test-smtp', async (req, res) => {
       port: smtp.port,
       secure: smtp.port === 465,
       auth: { user: smtp.user, pass: smtp.pass },
-      tls: { rejectUnauthorized: false }
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000
     });
     await transporter.verify();
     res.json({ success: true, message: 'Kết nối SMTP thành công!' });
@@ -265,7 +268,10 @@ Trân trọng.`;
       port: smtp.port,
       secure: smtp.port === 465,
       auth: { user: smtp.user, pass: smtp.pass },
-      tls: { rejectUnauthorized: false }
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000
     });
 
     const mailOptions = {
