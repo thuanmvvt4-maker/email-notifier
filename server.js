@@ -112,51 +112,53 @@ app.delete('/api/recipients/:id', (req, res) => {
 // ─── API: Đọc & trích xuất nội dung file ─────────────────────
 const uploadTemp = multer({ dest: UPLOADS_DIR, limits: { fileSize: 25 * 1024 * 1024 } });
 
-function extractDocInfo(text, filename) {
-  const result = { so_vb: '', ngay_vb: '', ve_viec: '' };
+// Bảng loại văn bản hay gặp
+const LOAI_VB_MAP = [
+  { pattern: /THÔNG\s+BÁO/i,   name: 'Thông báo' },
+  { pattern: /KẾ\s+HOẠCH/i,    name: 'Kế hoạch' },
+  { pattern: /QUYẾT\s+ĐỊNH/i,  name: 'Quyết định' },
+  { pattern: /CÔNG\s+VĂN/i,    name: 'Công văn' },
+  { pattern: /BÁO\s+CÁO/i,     name: 'Báo cáo' },
+  { pattern: /TỜ\s+TRÌNH/i,    name: 'Tờ trình' },
+  { pattern: /QUY\s+TRÌNH/i,   name: 'Quy trình' },
+  { pattern: /HƯỚNG\s+DẪN/i,   name: 'Hướng dẫn' },
+  { pattern: /BIÊN\s+BẢN/i,    name: 'Biên bản' },
+  { pattern: /HỢP\s+ĐỒNG/i,    name: 'Hợp đồng' },
+];
 
-  // Log để debug (xem text thực sự đọc được)
-  console.log('=== TEXT TỪ PDF ===\n' + text.substring(0, 800) + '\n==================');
+function extractDocInfo(text, filename) {
+  const result = { so_vb: '', ngay_vb: '', ve_viec: '', loai_vb: 'Thông báo' };
+
+  // ── Loại văn bản ────────────────────────────────────────────
+  for (const { pattern, name } of LOAI_VB_MAP) {
+    if (pattern.test(text)) { result.loai_vb = name; break; }
+  }
 
   // ── Số văn bản ──────────────────────────────────────────────
-  // Đặc thù văn bản PXNL: "Số: 612/PXNL" — chỉ lấy phần số/mã
-  // Tránh nhầm với "Số trang", "Số lượng", v.v.
-  const soMatch = text.match(/[Ss]ố\s*:\s*(\d+\s*\/\s*[A-Za-zÀ-ỹĐđ][A-Za-zÀ-ỹĐđ0-9\-]*)/);
+  const soMatch = text.match(/[Ss]ố\s*:\s*(\d+\s*\/\s*[-A-Za-zÀ-ỹĐđ][A-Za-zÀ-ỹĐđ0-9\-]*)/);
   if (soMatch) {
-    result.so_vb = soMatch[1].replace(/\s+/g, '').trim(); // bỏ khoảng trắng trong số
+    result.so_vb = soMatch[1].replace(/\s+/g, '').trim();
   }
 
   // ── Ngày văn bản ────────────────────────────────────────────
-  // Mẫu PXNL: "Lâm Đồng, ngày 08 tháng 6 năm 2026"
-  // Ưu tiên mẫu đầy đủ "ngày DD tháng M năm YYYY"
   const ngayMatch = text.match(/ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})/i);
   if (ngayMatch) {
-    const d = ngayMatch[1].padStart(2,'0');
-    const mo = ngayMatch[2].padStart(2,'0');
-    const y = ngayMatch[3];
-    result.ngay_vb = `${y}-${mo}-${d}`;
+    result.ngay_vb = `${ngayMatch[3]}-${ngayMatch[2].padStart(2,'0')}-${ngayMatch[1].padStart(2,'0')}`;
   }
 
   // ── Về việc ─────────────────────────────────────────────────
-  // Mẫu PXNL: "V/v thực hiện các hạng mục..." (có thể xuống nhiều dòng)
-  const vvMatch = text.match(/V\/v\s+([\s\S]{5,400}?)(?:\n\s*\n|\nKính|\nNhận|\nNơi|$)/i);
+  // Khớp cả "V/v" lẫn "Về việc" viết đầy đủ
+  const vvMatch = text.match(/(?:V\/v|Về\s+việc)\s+([\s\S]{5,400}?)(?:\n\s*\n|\nKính|\nNhận|\nNơi|\nCăn cứ|$)/i);
   if (vvMatch) {
-    result.ve_viec = 'V/v ' + vvMatch[1].replace(/[\r\n]+/g,' ').replace(/\s+/g,' ').trim();
-    // Giới hạn độ dài hợp lý
-    if (result.ve_viec.length > 200) result.ve_viec = result.ve_viec.substring(0, 200).trim();
+    result.ve_viec = vvMatch[1].replace(/[\r\n]+/g,' ').replace(/\s+/g,' ').trim();
+    if (result.ve_viec.length > 250) result.ve_viec = result.ve_viec.substring(0, 250).trim();
   }
   if (!result.ve_viec) {
-    result.ve_viec = filename
-      .replace(/\.[^.]+$/, '')
-      .replace(/[_\-]+/g, ' ')
-      .replace(/\s{2,}/g, ' ')
-      .trim();
+    result.ve_viec = filename.replace(/\.[^.]+$/, '').replace(/[_\-]+/g,' ').replace(/\s{2,}/g,' ').trim();
   }
 
-  console.log('>>> KẾT QUẢ TRÍCH XUẤT:');
-  console.log('    Số VB :', result.so_vb);
-  console.log('    Ngày  :', result.ngay_vb, '(YYYY-MM-DD → ngày/tháng/năm)');
-  console.log('    V/v   :', result.ve_viec.substring(0, 80));
+  console.log('>>> Loại VB:', result.loai_vb, '| Số:', result.so_vb, '| Ngày:', result.ngay_vb);
+  console.log('    V/v:', result.ve_viec.substring(0, 80));
   return result;
 }
 
@@ -227,23 +229,22 @@ app.post('/api/send', upload.single('file'), async (req, res) => {
     return res.status(400).json({ error: 'Chưa cấu hình SMTP. Vào Cài đặt để thiết lập.' });
   }
 
-  const { so_vb, ngay_vb, ve_viec, to_emails, noi_dung_them } = req.body;
+  const { so_vb, ngay_vb, ve_viec, loai_vb, to_emails, noi_dung_them } = req.body;
   const file = req.file;
+  const tenLoai = loai_vb || 'Thông báo';
 
   if (!to_emails) return res.status(400).json({ error: 'Chưa chọn người nhận' });
 
-  // Xây dựng nội dung email
-  // Định dạng ngày: 08/6/2026
   let ngayFormatted = '____________';
   if (ngay_vb) {
     const [y, mo, d] = ngay_vb.split('-');
     ngayFormatted = `${parseInt(d)}/${parseInt(mo)}/${y}`;
   }
-  const subject = `Thông báo số ${so_vb || '____'} ngày ${ngayFormatted}`;
+  const subject = `${tenLoai} số ${so_vb || '____'} ngày ${ngayFormatted}`;
 
   const bodyText = `Kính gửi CBCNV PXNL
 
-Thông báo số ${so_vb || '____________'} ngày ${ngayFormatted}
+${tenLoai} số ${so_vb || '____________'} ngày ${ngayFormatted}
 ${ve_viec || '____________________________________________'}
 ${noi_dung_them ? '\n' + noi_dung_them : ''}
 
@@ -252,7 +253,7 @@ Trân trọng.`;
   const bodyHtml = `
 <div style="font-family: Arial, sans-serif; font-size: 14px; color: #222; max-width: 680px; margin: 0 auto; padding: 10px;">
   <p style="margin: 0 0 16px 0;">Kính gửi <strong>CBCNV PXNL</strong></p>
-  <p style="margin: 0 0 6px 0;">Thông báo số <strong>${so_vb || '____________'}</strong> ngày <strong>${ngayFormatted}</strong></p>
+  <p style="margin: 0 0 6px 0;">${tenLoai} số <strong>${so_vb || '____________'}</strong> ngày <strong>${ngayFormatted}</strong></p>
   <p style="margin: 0 0 16px 0; font-style: italic;">${ve_viec || ''}</p>
   ${noi_dung_them ? `<p style="margin: 0 0 16px 0;">${noi_dung_them.replace(/\n/g, '<br>')}</p>` : ''}
   <p style="margin: 0;">Trân trọng./.</p>

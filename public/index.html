@@ -346,6 +346,24 @@
           <h2>Thông tin văn bản</h2>
         </div>
         <div class="card-body">
+          <div class="form-group">
+            <label>Loại văn bản <span class="required">*</span></label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select class="form-control" id="loaiVb" onchange="updatePreview()" style="flex:1">
+                <option>Thông báo</option>
+                <option>Kế hoạch</option>
+                <option>Quyết định</option>
+                <option>Công văn</option>
+                <option>Báo cáo</option>
+                <option>Tờ trình</option>
+                <option>Quy trình</option>
+                <option>Hướng dẫn</option>
+                <option>Biên bản</option>
+                <option>Hợp đồng</option>
+              </select>
+              <span id="loaiVbBadge" style="display:none" class="parsed-badge">✨ Tự động</span>
+            </div>
+          </div>
           <div class="form-row">
             <div class="form-group">
               <label>Số văn bản <span class="required">*</span></label>
@@ -705,6 +723,15 @@ async function parseFileContent(file) {
     }
 
     let filled = 0;
+    if (data.loai_vb) {
+      const sel = document.getElementById('loaiVb');
+      // Chọn option khớp, nếu không có thì thêm mới
+      let found = false;
+      for (let opt of sel.options) { if (opt.value === data.loai_vb) { sel.value = data.loai_vb; found = true; break; } }
+      if (!found) { sel.add(new Option(data.loai_vb, data.loai_vb)); sel.value = data.loai_vb; }
+      document.getElementById('loaiVbBadge').style.display = 'inline-flex';
+      filled++;
+    }
     if (data.so_vb) {
       document.getElementById('soVb').value = data.so_vb;
       document.getElementById('soVb').classList.add('field-auto');
@@ -725,7 +752,6 @@ async function parseFileContent(file) {
 
     if (filled > 0) {
       showToast(`✅ Đã tự động điền ${filled} trường từ nội dung file`, 'success');
-      // Gắn badge "Tự động"
       document.querySelectorAll('.field-auto').forEach(el => {
         const label = el.closest('.form-group')?.querySelector('label');
         if (label && !label.querySelector('.parsed-badge')) {
@@ -749,6 +775,7 @@ function removeFile() {
   document.getElementById('uploadZone').style.display = 'block';
   ['soVb','ngayVb','veViec'].forEach(id => document.getElementById(id).classList.remove('field-auto'));
   document.querySelectorAll('.parsed-badge').forEach(b => b.remove());
+  document.getElementById('loaiVbBadge').style.display = 'none';
 }
 
 function getFileIcon(name) {
@@ -765,6 +792,7 @@ function formatSize(bytes) {
 
 // ─── Preview ───────────────────────────────────────────────────
 function updatePreview() {
+  const loai = document.getElementById('loaiVb').value || 'Thông báo';
   const so = document.getElementById('soVb').value || '____________';
   const ngay = document.getElementById('ngayVb').value;
   const viec = document.getElementById('veViec').value || '____________________________________________';
@@ -781,7 +809,7 @@ function updatePreview() {
     document.getElementById('ngayHienThi').textContent = '';
   }
 
-  let preview = `Kính gửi CBCNV PXNL\n\nThông báo số ${so} ngày ${ngayStr}\n${viec}`;
+  let preview = `Kính gửi CBCNV PXNL\n\n${loai} số ${so} ngày ${ngayStr}\n${viec}`;
   if (them.trim()) preview += `\n\n${them.trim()}`;
   preview += '\n\nTrân trọng.';
 
@@ -805,6 +833,7 @@ async function sendEmail() {
   btn.innerHTML = '<div class="spinner"></div> Đang gửi...';
 
   const formData = new FormData();
+  formData.append('loai_vb', document.getElementById('loaiVb').value);
   formData.append('so_vb', so);
   formData.append('ngay_vb', ngay);
   formData.append('ve_viec', viec);
