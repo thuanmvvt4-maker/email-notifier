@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phần mềm Gửi Mail Thông Báo - PXNL</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #1a5276;
+    --primary-light: #2e86c1;
+    --accent: #e74c3c;
+    --success: #27ae60;
+    --warning: #f39c12;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --border: #d5d8dc;
+    --text: #2c3e50;
+    --muted: #7f8c8d;
+    --radius: 10px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: white; padding: 0 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 60px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-title { font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+  .header-title span { font-size: 22px; }
+  .header-nav { display: flex; gap: 4px; }
+  .nav-btn {
+    background: rgba(255,255,255,0.15); border: none; color: white;
+    padding: 7px 16px; border-radius: 6px; cursor: pointer;
+    font-size: 13px; font-weight: 500; transition: background 0.2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .nav-btn:hover, .nav-btn.active { background: rgba(255,255,255,0.3); }
+
+  /* Layout */
+  .container { max-width: 960px; margin: 0 auto; padding: 28px 20px; }
+
+  /* Card */
+  .card {
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 16px 22px; border-bottom: 1px solid var(--border);
+    background: #f8fafc; display: flex; align-items: center; gap: 10px;
+  }
+  .card-header h2 { font-size: 15px; font-weight: 700; color: var(--primary); }
+  .card-header .icon { font-size: 20px; }
+  .card-body { padding: 22px; }
+
+  /* Tab pages */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Form elements */
+  .form-group { margin-bottom: 18px; }
+  .form-group label {
+    display: block; font-size: 13px; font-weight: 600;
+    color: var(--text); margin-bottom: 6px;
+  }
+  .form-group label .required { color: var(--accent); margin-left: 3px; }
+  .form-control {
+    width: 100%; padding: 9px 13px; border: 1.5px solid var(--border);
+    border-radius: 7px; font-size: 14px; color: var(--text);
+    background: #fff; transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  .form-control:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(46,134,193,0.12); }
+  textarea.form-control { resize: vertical; min-height: 80px; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* Buttons */
+  .btn {
+    padding: 10px 20px; border-radius: 7px; border: none;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px;
+    transition: all 0.2s; white-space: nowrap;
+  }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-light); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,82,118,0.3); }
+  .btn-success { background: var(--success); color: white; }
+  .btn-success:hover { background: #229954; transform: translateY(-1px); }
+  .btn-danger { background: var(--accent); color: white; }
+  .btn-danger:hover { background: #c0392b; }
+  .btn-outline {
+    background: transparent; color: var(--primary);
+    border: 1.5px solid var(--primary);
+  }
+  .btn-outline:hover { background: var(--primary); color: white; }
+  .btn-sm { padding: 6px 13px; font-size: 12px; }
+  .btn-lg { padding: 13px 28px; font-size: 15px; }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+
+  /* File upload zone */
+  .upload-zone {
+    border: 2.5px dashed var(--border); border-radius: var(--radius);
+    padding: 32px 20px; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: #f8fafc; position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--primary-light); background: #eaf4fc;
+  }
+  .upload-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .upload-icon { font-size: 40px; margin-bottom: 10px; }
+  .upload-zone p { color: var(--muted); font-size: 14px; }
+  .upload-zone strong { color: var(--primary); }
+
+  .file-preview {
+    display: none; margin-top: 12px;
+    background: #eaf4fc; border: 1px solid #aed6f1;
+    border-radius: 7px; padding: 12px 16px;
+    align-items: center; gap: 12px;
+  }
+  .file-preview.show { display: flex; }
+  .file-icon { font-size: 28px; }
+  .file-info { flex: 1; }
+  .file-name { font-weight: 600; font-size: 14px; color: var(--primary); }
+  .file-size { font-size: 12px; color: var(--muted); }
+  .file-remove {
+    background: none; border: none; cursor: pointer;
+    color: var(--accent); font-size: 18px; padding: 4px;
+  }
+
+  /* Recipients */
+  .recipient-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .recipient-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; background: #f8fafc;
+    border: 1px solid var(--border); border-radius: 8px;
+    transition: background 0.15s;
+  }
+  .recipient-item:hover { background: #eaf4fc; }
+  .recipient-item input[type="checkbox"] {
+    width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary);
+  }
+  .recipient-info { flex: 1; }
+  .recipient-name { font-weight: 600; font-size: 14px; }
+  .recipient-email { font-size: 12px; color: var(--muted); }
+  .recipient-dept { font-size: 11px; color: var(--primary-light); font-weight: 500; }
+  .recipient-actions { display: flex; gap: 6px; }
+
+  /* Email preview */
+  .email-preview {
+    background: #f8fafc; border: 1px solid var(--border);
+    border-radius: 8px; padding: 18px; font-size: 14px;
+    line-height: 1.7; color: var(--text); white-space: pre-wrap;
+  }
+  .preview-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--muted); margin-bottom: 8px;
+  }
+
+  /* Notification */
+  .toast-container {
+    position: fixed; top: 72px; right: 20px; z-index: 999;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .toast {
+    padding: 13px 18px; border-radius: 8px; color: white;
+    font-size: 14px; font-weight: 500; min-width: 280px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    display: flex; align-items: center; gap: 10px;
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--accent); }
+  .toast.info { background: var(--primary); }
+  .toast.warning { background: var(--warning); }
+
+  /* Badge / select all */
+  .select-actions {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 12px; flex-wrap: wrap;
+  }
+  .badge {
+    background: var(--primary); color: white;
+    padding: 2px 9px; border-radius: 20px; font-size: 12px; font-weight: 700;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    z-index: 200; display: none; align-items: center; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: white; border-radius: var(--radius);
+    width: 420px; max-width: 95vw;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.2); overflow: hidden;
+  }
+  .modal-header {
+    padding: 16px 22px; background: var(--primary);
+    color: white; display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal-header h3 { font-size: 15px; }
+  .modal-close { background: none; border: none; color: white; font-size: 22px; cursor: pointer; line-height: 1; }
+  .modal-body { padding: 22px; }
+  .modal-footer { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+
+  /* Parse loading state */
+  .parsing-overlay {
+    position: absolute; inset: 0; background: rgba(234,244,252,0.85);
+    border-radius: var(--radius); display: flex; align-items: center;
+    justify-content: center; gap: 10px; font-size: 13px; font-weight: 600;
+    color: var(--primary); z-index: 5;
+  }
+  .parsed-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #d5f5e3; color: #1e8449; border-radius: 20px;
+    padding: 3px 10px; font-size: 11px; font-weight: 700;
+    margin-left: 8px; vertical-align: middle;
+  }
+  .field-auto { border-color: #27ae60 !important; background: #f0fdf4 !important; }
+
+  /* Loading spinner */
+  .spinner {
+    width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: white; border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Send summary */
+  .send-summary {
+    background: #eaf4fc; border: 1px solid #aed6f1;
+    border-radius: 8px; padding: 14px 18px; margin-bottom: 18px;
+    display: none;
+  }
+  .send-summary.show { display: block; }
+  .send-summary p { font-size: 13px; color: var(--text); margin-bottom: 4px; }
+  .send-summary strong { color: var(--primary); }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .form-row, .form-row-3 { grid-template-columns: 1fr; }
+    .header-title .subtitle { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-title">
+    <span>📧</span>
+    <div>
+      <div>Gửi Mail Thông Báo</div>
+    </div>
+  </div>
+  <nav class="header-nav">
+    <button class="nav-btn active" onclick="showPage('send')" id="nav-send">✉️ Gửi Mail</button>
+    <button class="nav-btn" onclick="showPage('recipients')" id="nav-recipients">👥 Người nhận</button>
+    <button class="nav-btn" onclick="showPage('settings')" id="nav-settings">⚙️ Cài đặt</button>
+  </nav>
+</header>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Modal thêm/sửa người nhận -->
+<div class="modal-overlay" id="recipientModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">Thêm người nhận</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Họ tên</label>
+        <input type="text" class="form-control" id="mName" placeholder="Nguyễn Văn A">
+      </div>
+      <div class="form-group">
+        <label>Email <span class="required">*</span></label>
+        <input type="email" class="form-control" id="mEmail" placeholder="example@gmail.com">
+      </div>
+      <div class="form-group">
+        <label>Phòng / Bộ phận</label>
+        <input type="text" class="form-control" id="mDept" placeholder="PXNL, Kế toán...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">Hủy</button>
+      <button class="btn btn-primary btn-sm" onclick="saveRecipient()">💾 Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ PAGE: GỬI MAIL ═══════════ -->
+<div class="container">
+
+<div class="page active" id="page-send">
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+
+    <!-- Cột trái: Form soạn -->
+    <div>
+      <!-- Upload file -->
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-header">
+          <span class="icon">📎</span>
+          <h2>Đính kèm văn bản</h2>
+        </div>
+        <div class="card-body">
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.zip">
+            <div class="upload-icon">📄</div>
+            <p><strong>Kéo thả file vào đây</strong> hoặc click để chọn</p>
+            <p style="font-size:12px;margin-top:6px;">PDF, Word, Excel, ảnh... (tối đa 25MB)</p>
+          </div>
+          <div class="file-preview" id="filePreview">
+            <div class="file-icon" id="fileIcon">📄</div>
+            <div class="file-info">
+              <div class="file-name" id="fileName"></div>
+              <div class="file-size" id="fileSize"></div>
+            </div>
+            <button class="file-remove" onclick="removeFile()" title="Xóa file">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nội dung văn bản -->
+      <div class="card">
+        <div class="card-header">
+          <span class="icon">📝</span>
+          <h2>Thông tin văn bản</h2>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Số văn bản <span class="required">*</span></label>
+              <div style="position:relative">
+                <input type="text" class="form-control" id="soVb" placeholder="Tự động từ file..." oninput="updatePreview()">
+                <span id="soVbSpin" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%)" class="spin-icon">⏳</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Ngày văn bản <span class="required">*</span></label>
+              <div style="position:relative">
+                <input type="date" class="form-control" id="ngayVb" oninput="updatePreview()">
+                <span id="ngayVbSpin" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%)" class="spin-icon">⏳</span>
+              </div>
+              <div id="ngayHienThi" style="font-size:12px;color:#1a5276;margin-top:4px;font-weight:600;"></div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Về việc <span class="required">*</span></label>
+            <div style="position:relative">
+              <input type="text" class="form-control" id="veViec" placeholder="Tự động từ file..." oninput="updatePreview()">
+              <span id="veViecSpin" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%)" class="spin-icon">⏳</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Nội dung thêm <span style="color:var(--muted);font-weight:400">(tùy chọn)</span></label>
+            <textarea class="form-control" id="noiDungThem"
+              placeholder="Nhập hướng dẫn hoặc lưu ý thêm nếu cần..." oninput="updatePreview()"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cột phải: Người nhận + Preview -->
+    <div>
+      <!-- Người nhận -->
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-header">
+          <span class="icon">👥</span>
+          <h2>Người nhận</h2>
+        </div>
+        <div class="card-body">
+          <div class="select-actions">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+              <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" style="width:16px;height:16px;accent-color:var(--primary)">
+              Chọn tất cả
+            </label>
+            <span class="badge" id="selectedCount">0</span>
+            <span style="font-size:12px;color:var(--muted)">người được chọn</span>
+          </div>
+          <div class="recipient-list" id="sendRecipientList">
+            <div style="text-align:center;color:var(--muted);font-size:13px;padding:20px">
+              Chưa có người nhận. <a href="#" onclick="showPage('recipients')" style="color:var(--primary)">Thêm người nhận →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview nội dung -->
+      <div class="card">
+        <div class="card-header">
+          <span class="icon">👁️</span>
+          <h2>Xem trước nội dung</h2>
+        </div>
+        <div class="card-body">
+          <div class="preview-label">NỘI DUNG EMAIL SẼ GỬI</div>
+          <div class="email-preview" id="emailPreview">Điền thông tin văn bản để xem trước...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nút gửi -->
+  <div style="margin-top:22px;display:flex;justify-content:center;">
+    <button class="btn btn-success btn-lg" id="sendBtn" onclick="sendEmail()">
+      ✉️ Gửi Email Thông Báo
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ PAGE: NGƯỜI NHẬN ════════ -->
+<div class="page" id="page-recipients">
+  <div class="card">
+    <div class="card-header" style="justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="icon">👥</span>
+        <h2>Danh sách người nhận</h2>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="openAddModal()">＋ Thêm người nhận</button>
+    </div>
+    <div class="card-body">
+      <div class="recipient-list" id="recipientList">
+        <div style="text-align:center;color:var(--muted);padding:30px">Chưa có người nhận nào.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ PAGE: CÀI ĐẶT ══════════ -->
+<div class="page" id="page-settings">
+  <div class="card">
+    <div class="card-header">
+      <span class="icon">⚙️</span>
+      <h2>Cấu hình SMTP (máy chủ gửi mail)</h2>
+    </div>
+    <div class="card-body">
+      <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:14px 16px;margin-bottom:20px;font-size:13px;color:#795548;">
+        💡 <strong>Hướng dẫn:</strong> Với Gmail, bật <em>Xác thực 2 bước</em> rồi tạo <em>Mật khẩu ứng dụng</em> tại
+        <strong>myaccount.google.com → Bảo mật → Mật khẩu ứng dụng</strong>. Dùng mật khẩu đó thay cho mật khẩu thường.
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>SMTP Host <span class="required">*</span></label>
+          <input type="text" class="form-control" id="smtpHost" placeholder="smtp.gmail.com">
+        </div>
+        <div class="form-group">
+          <label>SMTP Port</label>
+          <input type="number" class="form-control" id="smtpPort" placeholder="587" value="587">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email người gửi <span class="required">*</span></label>
+          <input type="email" class="form-control" id="smtpUser" placeholder="your@gmail.com">
+        </div>
+        <div class="form-group">
+          <label>Mật khẩu ứng dụng <span class="required">*</span></label>
+          <input type="password" class="form-control" id="smtpPass" placeholder="••••••••••••">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Tên hiển thị người gửi</label>
+        <input type="text" class="form-control" id="smtpFrom" placeholder="PXNL Thông báo">
+      </div>
+      <hr class="divider">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="saveSmtp()">💾 Lưu cấu hình</button>
+        <button class="btn btn-outline" onclick="testSmtp()">🔗 Kiểm tra kết nối</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- .container -->
+
+<script>
+const API = 'http://localhost:3000/api';
+let recipients = [];
+let editingId = null;
+let selectedFile = null;
+
+// ─── Khởi tạo ──────────────────────────────────────────────────
+async function init() {
+  await loadRecipients();
+  await loadSmtpConfig();
+  updatePreview();
+  setupDragDrop();
+  // Set hôm nay là mặc định
+  document.getElementById('ngayVb').value = new Date().toISOString().split('T')[0];
+  updatePreview();
+}
+
+// ─── Navigation ────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'send') renderSendRecipients();
+}
+
+// ─── Recipients ────────────────────────────────────────────────
+async function loadRecipients() {
+  try {
+    const r = await fetch(API + '/recipients');
+    recipients = await r.json();
+    renderRecipientList();
+    renderSendRecipients();
+  } catch(e) {
+    showToast('Không thể kết nối server. Hãy chắc chắn server đang chạy.', 'error');
+  }
+}
+
+function renderRecipientList() {
+  const el = document.getElementById('recipientList');
+  if (!recipients.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:30px">Chưa có người nhận nào.</div>';
+    return;
+  }
+  el.innerHTML = recipients.map(r => `
+    <div class="recipient-item">
+      <div style="font-size:22px">${getAvatar(r.name)}</div>
+      <div class="recipient-info">
+        <div class="recipient-name">${r.name || '(Không tên)'}</div>
+        <div class="recipient-email">${r.email}</div>
+        ${r.department ? `<div class="recipient-dept">${r.department}</div>` : ''}
+      </div>
+      <div class="recipient-actions">
+        <button class="btn btn-outline btn-sm" onclick="openEditModal('${r.id}')">✏️ Sửa</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteRecipient('${r.id}')">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderSendRecipients() {
+  const el = document.getElementById('sendRecipientList');
+  if (!recipients.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:20px">Chưa có người nhận. <a href="#" onclick="showPage(\'recipients\')" style="color:var(--primary)">Thêm người nhận →</a></div>';
+    updateSelectedCount();
+    return;
+  }
+  el.innerHTML = recipients.map(r => `
+    <div class="recipient-item" style="padding:9px 14px">
+      <input type="checkbox" class="recv-check" value="${r.email}" onchange="updateSelectedCount()">
+      <div style="font-size:18px">${getAvatar(r.name)}</div>
+      <div class="recipient-info">
+        <div class="recipient-name" style="font-size:13px">${r.name || '(Không tên)'}</div>
+        <div class="recipient-email">${r.email}</div>
+        ${r.department ? `<div class="recipient-dept">${r.department}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+  updateSelectedCount();
+}
+
+function getAvatar(name) {
+  const avatars = ['👤','👨‍💼','👩‍💼','🧑‍💼'];
+  return name ? avatars[name.charCodeAt(0) % avatars.length] : '👤';
+}
+
+function updateSelectedCount() {
+  const checks = document.querySelectorAll('.recv-check:checked');
+  document.getElementById('selectedCount').textContent = checks.length;
+  const all = document.querySelectorAll('.recv-check');
+  document.getElementById('selectAll').checked = all.length > 0 && checks.length === all.length;
+  document.getElementById('selectAll').indeterminate = checks.length > 0 && checks.length < all.length;
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.recv-check').forEach(c => c.checked = cb.checked);
+  updateSelectedCount();
+}
+
+// ─── Modal ─────────────────────────────────────────────────────
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Thêm người nhận';
+  document.getElementById('mName').value = '';
+  document.getElementById('mEmail').value = '';
+  document.getElementById('mDept').value = '';
+  document.getElementById('recipientModal').classList.add('show');
+  setTimeout(() => document.getElementById('mName').focus(), 100);
+}
+
+function openEditModal(id) {
+  const r = recipients.find(x => x.id === id);
+  if (!r) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = 'Chỉnh sửa người nhận';
+  document.getElementById('mName').value = r.name || '';
+  document.getElementById('mEmail').value = r.email;
+  document.getElementById('mDept').value = r.department || '';
+  document.getElementById('recipientModal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('recipientModal').classList.remove('show');
+}
+
+async function saveRecipient() {
+  const name = document.getElementById('mName').value.trim();
+  const email = document.getElementById('mEmail').value.trim();
+  const department = document.getElementById('mDept').value.trim();
+  if (!email) return showToast('Vui lòng nhập email', 'warning');
+
+  try {
+    let url = API + '/recipients', method = 'POST';
+    if (editingId) { url += '/' + editingId; method = 'PUT'; }
+
+    const r = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, department })
+    });
+    const data = await r.json();
+    if (data.error) return showToast(data.error, 'error');
+
+    closeModal();
+    await loadRecipients();
+    showToast(editingId ? 'Đã cập nhật người nhận' : 'Đã thêm người nhận', 'success');
+  } catch(e) {
+    showToast('Lỗi kết nối server', 'error');
+  }
+}
+
+async function deleteRecipient(id) {
+  if (!confirm('Xóa người nhận này?')) return;
+  try {
+    await fetch(API + '/recipients/' + id, { method: 'DELETE' });
+    await loadRecipients();
+    showToast('Đã xóa người nhận', 'success');
+  } catch(e) {
+    showToast('Lỗi kết nối server', 'error');
+  }
+}
+
+// ─── File upload ───────────────────────────────────────────────
+function setupDragDrop() {
+  const zone = document.getElementById('uploadZone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) handleFile(e.target.files[0]);
+  });
+}
+
+function handleFile(file) {
+  selectedFile = file;
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileSize').textContent = formatSize(file.size);
+  document.getElementById('fileIcon').textContent = getFileIcon(file.name);
+  document.getElementById('filePreview').classList.add('show');
+  document.getElementById('uploadZone').style.display = 'none';
+  parseFileContent(file);
+}
+
+async function parseFileContent(file) {
+  // Hiện trạng thái đang đọc
+  const infoCard = document.querySelector('#page-send .card:nth-child(2)');
+  const overlay = document.createElement('div');
+  overlay.className = 'parsing-overlay';
+  overlay.id = 'parseOverlay';
+  overlay.innerHTML = '<div class="spinner" style="border-color:rgba(26,82,118,0.3);border-top-color:var(--primary)"></div> Đang đọc nội dung văn bản...';
+  if (infoCard) { infoCard.style.position = 'relative'; infoCard.appendChild(overlay); }
+
+  // Xóa trạng thái cũ
+  ['soVb','ngayVb','veViec'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove('field-auto');
+  });
+  document.querySelectorAll('.parsed-badge').forEach(b => b.remove());
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const r = await fetch(API + '/parse-file', { method: 'POST', body: formData });
+    const data = await r.json();
+
+    if (data.error) {
+      showToast('Không đọc được nội dung file. Vui lòng điền thủ công.', 'warning');
+      return;
+    }
+
+    let filled = 0;
+    if (data.so_vb) {
+      document.getElementById('soVb').value = data.so_vb;
+      document.getElementById('soVb').classList.add('field-auto');
+      filled++;
+    }
+    if (data.ngay_vb) {
+      document.getElementById('ngayVb').value = data.ngay_vb;
+      document.getElementById('ngayVb').classList.add('field-auto');
+      filled++;
+    }
+    if (data.ve_viec) {
+      document.getElementById('veViec').value = data.ve_viec;
+      document.getElementById('veViec').classList.add('field-auto');
+      filled++;
+    }
+
+    updatePreview();
+
+    if (filled > 0) {
+      showToast(`✅ Đã tự động điền ${filled} trường từ nội dung file`, 'success');
+      // Gắn badge "Tự động"
+      document.querySelectorAll('.field-auto').forEach(el => {
+        const label = el.closest('.form-group')?.querySelector('label');
+        if (label && !label.querySelector('.parsed-badge')) {
+          label.insertAdjacentHTML('beforeend', '<span class="parsed-badge">✨ Tự động</span>');
+        }
+      });
+    } else {
+      showToast('Không tìm thấy thông tin trong file. Vui lòng điền thủ công.', 'warning');
+    }
+  } catch(e) {
+    showToast('Lỗi khi đọc file', 'error');
+  } finally {
+    document.getElementById('parseOverlay')?.remove();
+  }
+}
+
+function removeFile() {
+  selectedFile = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('filePreview').classList.remove('show');
+  document.getElementById('uploadZone').style.display = 'block';
+  ['soVb','ngayVb','veViec'].forEach(id => document.getElementById(id).classList.remove('field-auto'));
+  document.querySelectorAll('.parsed-badge').forEach(b => b.remove());
+}
+
+function getFileIcon(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  const map = { pdf:'📕', doc:'📘', docx:'📘', xls:'📗', xlsx:'📗', png:'🖼️', jpg:'🖼️', jpeg:'🖼️', zip:'🗜️' };
+  return map[ext] || '📄';
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1024/1024).toFixed(1) + ' MB';
+}
+
+// ─── Preview ───────────────────────────────────────────────────
+function updatePreview() {
+  const so = document.getElementById('soVb').value || '____________';
+  const ngay = document.getElementById('ngayVb').value;
+  const viec = document.getElementById('veViec').value || '____________________________________________';
+  const them = document.getElementById('noiDungThem').value;
+
+  let ngayStr = '____________';
+  if (ngay) {
+    const [y, mo, d] = ngay.split('-');
+    ngayStr = `${parseInt(d)}/${parseInt(mo)}/${y}`;
+    // Hiển thị xác nhận tiếng Việt bên dưới ô ngày
+    document.getElementById('ngayHienThi').textContent =
+      `✔ Ngày ${parseInt(d)} tháng ${parseInt(mo)} năm ${y}`;
+  } else {
+    document.getElementById('ngayHienThi').textContent = '';
+  }
+
+  let preview = `Kính gửi CBCNV PXNL\n\nThông báo số ${so} ngày ${ngayStr}\n${viec}`;
+  if (them.trim()) preview += `\n\n${them.trim()}`;
+  preview += '\n\nTrân trọng.';
+
+  document.getElementById('emailPreview').textContent = preview;
+}
+
+// ─── Gửi email ─────────────────────────────────────────────────
+async function sendEmail() {
+  const so = document.getElementById('soVb').value.trim();
+  const ngay = document.getElementById('ngayVb').value;
+  const viec = document.getElementById('veViec').value.trim();
+
+  if (!so) return showToast('Vui lòng nhập số văn bản', 'warning');
+  if (!viec) return showToast('Vui lòng nhập nội dung "Về việc"', 'warning');
+
+  const checked = [...document.querySelectorAll('.recv-check:checked')];
+  if (!checked.length) return showToast('Vui lòng chọn ít nhất 1 người nhận', 'warning');
+
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Đang gửi...';
+
+  const formData = new FormData();
+  formData.append('so_vb', so);
+  formData.append('ngay_vb', ngay);
+  formData.append('ve_viec', viec);
+  formData.append('noi_dung_them', document.getElementById('noiDungThem').value);
+  checked.forEach(c => formData.append('to_emails', c.value));
+  if (selectedFile) formData.append('file', selectedFile);
+
+  try {
+    const r = await fetch(API + '/send', { method: 'POST', body: formData });
+    const data = await r.json();
+
+    if (data.error) {
+      showToast(data.error, 'error');
+    } else {
+      showToast(data.message, 'success');
+      // Reset form
+      document.getElementById('soVb').value = '';
+      document.getElementById('veViec').value = '';
+      document.getElementById('noiDungThem').value = '';
+      document.getElementById('ngayVb').value = new Date().toISOString().split('T')[0];
+      removeFile();
+      document.querySelectorAll('.recv-check').forEach(c => c.checked = false);
+      document.getElementById('selectAll').checked = false;
+      updateSelectedCount();
+      updatePreview();
+    }
+  } catch(e) {
+    showToast('Không thể kết nối server', 'error');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '✉️ Gửi Email Thông Báo';
+}
+
+// ─── SMTP Config ───────────────────────────────────────────────
+async function loadSmtpConfig() {
+  try {
+    const r = await fetch(API + '/config');
+    const data = await r.json();
+    const s = data.smtp;
+    document.getElementById('smtpHost').value = s.host || '';
+    document.getElementById('smtpPort').value = s.port || 587;
+    document.getElementById('smtpUser').value = s.user || '';
+    document.getElementById('smtpPass').value = s.pass || '';
+    document.getElementById('smtpFrom').value = s.from || '';
+  } catch(e) {}
+}
+
+async function saveSmtp() {
+  const payload = {
+    host: document.getElementById('smtpHost').value.trim(),
+    port: document.getElementById('smtpPort').value,
+    user: document.getElementById('smtpUser').value.trim(),
+    pass: document.getElementById('smtpPass').value,
+    from: document.getElementById('smtpFrom').value.trim()
+  };
+  if (!payload.host || !payload.user) return showToast('Vui lòng điền đầy đủ Host và Email', 'warning');
+
+  try {
+    const r = await fetch(API + '/config/smtp', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    if (data.error) showToast(data.error, 'error');
+    else showToast(data.message, 'success');
+  } catch(e) {
+    showToast('Lỗi kết nối server', 'error');
+  }
+}
+
+async function testSmtp() {
+  showToast('Đang kiểm tra kết nối...', 'info');
+  try {
+    const r = await fetch(API + '/test-smtp', { method: 'POST' });
+    const data = await r.json();
+    if (data.error) showToast(data.error, 'error');
+    else showToast(data.message, 'success');
+  } catch(e) {
+    showToast('Lỗi kết nối server', 'error');
+  }
+}
+
+// ─── Toast ─────────────────────────────────────────────────────
+function showToast(msg, type = 'info') {
+  const icons = { success:'✅', error:'❌', warning:'⚠️', info:'ℹ️' };
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(100%)'; el.style.transition = 'all 0.3s'; setTimeout(() => el.remove(), 300); }, 3500);
+}
+
+// Đóng modal khi click ngoài
+document.getElementById('recipientModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Enter trong modal
+document.getElementById('mEmail').addEventListener('keydown', e => { if (e.key === 'Enter') saveRecipient(); });
+
+init();
+</script>
+</body>
+</html>
